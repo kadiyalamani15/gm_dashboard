@@ -33,10 +33,12 @@ export default function TransitFilters({ activeFilters, toggleCategory, toggleLi
   };
 
   // Handles hover leave with 50ms delay
-  const handleMouseLeave = (category: string) => {
+  const handleMouseLeave = () => {
     setIsInsideExpanded(false);
     const id = setTimeout(() => {
-      setHovered(null);
+      if (isInsideExpanded) {
+        setHovered(null);
+      }
     }, 50);
     setTimeoutId(id);
   };
@@ -59,13 +61,13 @@ export default function TransitFilters({ activeFilters, toggleCategory, toggleLi
           hovered && hovered !== "subway" ? "opacity-50" : "opacity-100"
         }`}
         onMouseEnter={() => handleMouseEnter("subway")}
-        onMouseLeave={() => handleMouseLeave("subway")}
+        onMouseLeave={() => handleMouseLeave()}
       >
         {hovered === "subway" && (
           <div
             className="absolute right-14 flex gap-2 p-2 bg-gray-800 rounded-lg shadow-lg transition-all duration-300"
             onMouseEnter={() => handleMouseEnter("subway")}
-            onMouseLeave={() => handleMouseLeave("subway")}
+            onMouseLeave={() => handleMouseLeave()}
           >
             {SUBWAY_LINES.map((line) => (
               <img
@@ -101,13 +103,13 @@ export default function TransitFilters({ activeFilters, toggleCategory, toggleLi
           hovered && hovered !== "lightrail" ? "opacity-50" : "opacity-100"
         }`}
         onMouseEnter={() => handleMouseEnter("lightrail")}
-        onMouseLeave={() => handleMouseLeave("lightrail")}
+        onMouseLeave={() => handleMouseLeave()}
       >
         {hovered === "lightrail" && (
             <div
                 className="absolute right-14 flex gap-2 p-2 bg-gray-800 rounded-lg shadow-lg transition-all duration-300"
                 onMouseEnter={() => handleMouseEnter("lightrail")}
-                onMouseLeave={() => handleMouseLeave("lightrail")}
+                onMouseLeave={() => handleMouseLeave()}
             >
                 {LIGHTRAIL_LINES.map((line) => {
                 let srcPath = "";
@@ -158,7 +160,7 @@ export default function TransitFilters({ activeFilters, toggleCategory, toggleLi
           hovered && hovered !== "commuter" ? "opacity-50" : "opacity-100"
         }`}
         onMouseEnter={() => handleMouseEnter("commuter")}
-        onMouseLeave={() => handleMouseLeave("commuter")}
+        onMouseLeave={() => handleMouseLeave()}
       >
         {/* {hovered === "commuter" && (
           <span
@@ -190,7 +192,7 @@ export default function TransitFilters({ activeFilters, toggleCategory, toggleLi
             hovered && hovered !== "showAll" ? "opacity-50" : "opacity-100"
           }`}
         onMouseEnter={() => handleMouseEnter("showAll")}
-        onMouseLeave={() => handleMouseLeave("showAll")}
+        onMouseLeave={() => handleMouseLeave()}
       >
         {hovered === "showAll" && (
           <span className="absolute right-14 whitespace-nowrap bg-black text-white py-1 px-2 rounded-md transition-all duration-300">
