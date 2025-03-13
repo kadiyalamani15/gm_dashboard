@@ -1,6 +1,5 @@
 "use client";
 
-import { MutableRefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { LocateFixed } from "lucide-react";
 import maplibregl from "maplibre-gl";
