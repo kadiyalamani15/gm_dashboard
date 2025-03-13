@@ -6,7 +6,7 @@ import maplibregl from "maplibre-gl";
 
 // Default map settings
 const DEFAULT_CENTER: [number, number] = [-71.076639, 42.34268];
-const DEFAULT_ZOOM = 12;
+const DEFAULT_ZOOM = 11;
 
 interface ResetButtonProps {
   mapInstance: maplibregl.Map | null;

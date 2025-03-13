@@ -7,6 +7,7 @@ import ResetButton from "./ResetButton";
 import TrainPaths from "./TrainPaths";
 import TransitFilters from "./TransitFilters";
 import LiveTrainMarkers from "./LiveTrainMarkers";
+import ZoomControls from "./ZoomControls";
 
 const DEFAULT_CENTER: [number, number] = [-71.0589, 42.3601];
 
@@ -91,6 +92,7 @@ const Map = () => {
       />
 
       <ResetButton mapInstance={mapInstance.current} />
+      <ZoomControls map={mapInstance.current} />
     </div>
   );
 };
