@@ -80,7 +80,7 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
           // ✅ If marker exists, update its position (DO NOT reset visibility)
           if (trainMarkers.current.has(trainId)) {
             const existingMarker = trainMarkers.current.get(trainId)!;
-            existingMarker.marker.setLngLat([longitude, latitude]);
+            existingMarker.marker.setLngLat([longitude, latitude]).setRotation(bearing);
           } else {
             // 🔹 Define custom marker ONCE before fetching API
             const customMarkerElement = document.createElement('div');
