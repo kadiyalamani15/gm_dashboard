@@ -17,7 +17,6 @@ const MBTA_COMMUTER_RAIL_LINES = [
 
 const allLines = [...MBTA_SUBWAY_LINES, ...MBTA_LIGHTRAIL_LINES, ...MBTA_COMMUTER_RAIL_LINES];
 
-// ✅ Define types for API responses
 interface RouteAttributes {
   color?: string;
 }
@@ -41,9 +40,9 @@ interface TrainPathsProps {
 
 export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: TrainPathsProps) {
   const [routeDataCache, setRouteDataCache] = useState<Map<string, GeoJSON.FeatureCollection<GeoJSON.LineString>>>(new Map());
-  const [routesLoaded, setRoutesLoaded] = useState(false); // ✅ Track when all routes finish loading
+  const [routesLoaded, setRoutesLoaded] = useState(false);
 
-  // ✅ Fetch and store route shapes only once
+  // Fetch and store route shapes for a given line, with retries
   const fetchAndStoreRoute = useCallback(async (line: string, attempt = 1) => {
     if (!map || routeDataCache.has(line)) return; // Skip if already cached
 
@@ -63,11 +62,10 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
         throw new Error(`HTTP Error ${response.status}`);
       }
 
-      // ✅ Ensure API response matches expected structure
       const routeData: RouteResponse = await response.json();
       const routeColor = `#${routeData.data.attributes.color || '888888'}`;
 
-      // ✅ Extract shape data safely
+      // Extract shape data
       const shapeDataArray = routeData.included.filter(
         (item): item is { type: string; id: string; attributes: ShapeAttributes } => item.type === 'shape'
       );
@@ -104,7 +102,6 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
       console.log(`✅ Successfully loaded route: ${line}`);
     } catch (error) {
       console.error(`❌ Error loading ${line}: ${(error as Error).message}`);
-
       if (attempt < MAX_RETRIES) {
         console.log(`🔄 Retrying ${line} in ${INITIAL_RETRY_DELAY * attempt}ms...`);
         await delay(INITIAL_RETRY_DELAY * attempt);
@@ -115,7 +112,7 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
     }
   }, [map, routeDataCache]);
 
-  // ✅ Fetch all shapes **only once** (on mount)
+  // Load all routes sequentially
   useEffect(() => {
     if (!map || routesLoaded) return;
 
@@ -125,7 +122,7 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
           await fetchAndStoreRoute(line);
         }
         console.log("🎉 All routes loaded successfully!");
-        setRoutesLoaded(true); // ✅ Mark all routes as loaded
+        setRoutesLoaded(true);
         onRoutesLoaded();
       } catch (err) {
         console.error("❌ Error loading all routes:", err);
@@ -133,17 +130,9 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
     };
 
     loadRoutes();
-  }, [map, fetchAndStoreRoute]);
+  }, [map, fetchAndStoreRoute, routesLoaded, onRoutesLoaded]);
 
-  // ✅ Trigger live train markers **only after routes finish loading**
-//   useEffect(() => {
-//     if (routesLoaded) {
-//       console.log("🚦 All routes loaded. Triggering onRoutesLoaded()");
-//       onRoutesLoaded();
-//     }
-//   }, [routesLoaded, onRoutesLoaded]);
-
-  // ✅ Toggle visibility dynamically **without refetching**
+  // Toggle layer visibility dynamically
   useEffect(() => {
     if (!map) return;
 
@@ -160,12 +149,12 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
   return null;
 }
 
-// ✅ Utility: Delay function for retries
+// Utility: Delay function for retries
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ✅ Utility: Decode polyline function
+// Utility: Decode polyline function
 function decodePolyline(encoded: string): [number, number][] {
   let index = 0, lat = 0, lng = 0;
   const coordinates: [number, number][] = [];

@@ -90,7 +90,7 @@ const Map = () => {
         })}
       />
 
-      <ResetButton mapInstance={mapInstance} />
+      <ResetButton mapInstance={mapInstance.current} />
     </div>
   );
 };
