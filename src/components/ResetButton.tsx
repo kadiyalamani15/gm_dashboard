@@ -1,7 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { MutableRefObject } from "react";
+import { Button } from "@/components/ui/button";
+import { LocateFixed } from "lucide-react"; // Import the icon from shadcn/lucide-react
 import maplibregl from "maplibre-gl";
 
 // Default map settings
@@ -21,10 +22,11 @@ const ResetButton: React.FC<ResetButtonProps> = ({ mapInstance }) => {
 
   return (
     <Button
-      className="absolute top-52 right-4 z-10 bg-black text-white px-4 py-2 rounded-md shadow-md hover:bg-gray-800 transition"
+      className="absolute top-52 right-4 z-10 bg-black text-white p-2 rounded-full shadow-md hover:bg-gray-800 transition w-14 h-14"
       onClick={resetMap}
+      size="icon" // Makes button circular, recommended in shadcn UI
     >
-      Recenter
+      <LocateFixed style={{ width: "32px", height: "32px" }} /> {/* Adjust size to match UI */}
     </Button>
   );
 };

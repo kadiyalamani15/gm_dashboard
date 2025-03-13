@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 
 const MBTA_API_BASE_URL = 'https://api-v3.mbta.com';
@@ -36,14 +36,17 @@ interface RouteResponse {
 interface TrainPathsProps {
   map: maplibregl.Map | null;
   activeFilters: { [key: string]: boolean };
-  onRoutesLoaded: () => void;
+  onRoutesLoaded: () => void; // Ensure live locations start after routes load
 }
 
 export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: TrainPathsProps) {
-//   const [isLoading, setIsLoading] = useState(true);
+  const [routeDataCache, setRouteDataCache] = useState<Map<string, GeoJSON.FeatureCollection<GeoJSON.LineString>>>(new Map());
+  const [routesLoaded, setRoutesLoaded] = useState(false); // ✅ Track when all routes finish loading
 
-  // ✅ Memoized function for fetching and loading a single route
-  const fetchAndLoadRoute = useCallback(async (line: string, attempt = 1) => {
+  // ✅ Fetch and store route shapes only once
+  const fetchAndStoreRoute = useCallback(async (line: string, attempt = 1) => {
+    if (!map || routeDataCache.has(line)) return; // Skip if already cached
+
     console.log(`🚆 Fetching route: ${line} (Attempt ${attempt})`);
 
     try {
@@ -55,7 +58,7 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
         if (response.status === 429) {
           console.warn(`⚠️ API rate limit reached for ${line}, retrying after delay...`);
           await delay(INITIAL_RETRY_DELAY * attempt);
-          return fetchAndLoadRoute(line, attempt + 1);
+          return fetchAndStoreRoute(line, attempt + 1);
         }
         throw new Error(`HTTP Error ${response.status}`);
       }
@@ -63,8 +66,8 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
       // ✅ Ensure API response matches expected structure
       const routeData: RouteResponse = await response.json();
       const routeColor = `#${routeData.data.attributes.color || '888888'}`;
-      
-      // ✅ Explicitly define the type for `shapeDataArray`
+
+      // ✅ Extract shape data safely
       const shapeDataArray = routeData.included.filter(
         (item): item is { type: string; id: string; attributes: ShapeAttributes } => item.type === 'shape'
       );
@@ -82,17 +85,19 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
         })),
       };
 
+      setRouteDataCache(prevCache => new Map(prevCache.set(line, mbtaGeoJSON)));
+
       const sourceId = `mbta-routes-${line}`;
       const layerId = `mbta-lines-${line}`;
 
-      if (!map?.getSource(sourceId)) {
-        map?.addSource(sourceId, { type: 'geojson', data: mbtaGeoJSON });
-        map?.addLayer({
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, { type: 'geojson', data: mbtaGeoJSON });
+        map.addLayer({
           id: layerId,
           type: 'line',
           source: sourceId,
           layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': ['get', 'route_color'], 'line-width': 4 },
+          paint: { 'line-color': ['get', 'route_color'], 'line-width': 2 },
         });
       }
 
@@ -103,37 +108,42 @@ export default function TrainPaths({ map, activeFilters, onRoutesLoaded }: Train
       if (attempt < MAX_RETRIES) {
         console.log(`🔄 Retrying ${line} in ${INITIAL_RETRY_DELAY * attempt}ms...`);
         await delay(INITIAL_RETRY_DELAY * attempt);
-        return fetchAndLoadRoute(line, attempt + 1);
+        return fetchAndStoreRoute(line, attempt + 1);
       } else {
         console.error(`🚨 Maximum retries reached for ${line}, skipping...`);
       }
     }
-  }, [map]);
+  }, [map, routeDataCache]);
 
+  // ✅ Fetch all shapes **only once** (on mount)
   useEffect(() => {
-    if (!map) return;
-
-    console.log("✅ Map instance is ready, loading routes...");
+    if (!map || routesLoaded) return;
 
     const loadRoutes = async () => {
       try {
         for (const line of allLines) {
-          await fetchAndLoadRoute(line);
+          await fetchAndStoreRoute(line);
         }
         console.log("🎉 All routes loaded successfully!");
+        setRoutesLoaded(true); // ✅ Mark all routes as loaded
         onRoutesLoaded();
       } catch (err) {
         console.error("❌ Error loading all routes:", err);
-      } 
-    //   finally {
-    //     setIsLoading(false);
-    //   }
+      }
     };
 
     loadRoutes();
-  }, [map, fetchAndLoadRoute, onRoutesLoaded]);
+  }, [map, fetchAndStoreRoute]);
 
-  // ✅ Update visibility based on individual line filters
+  // ✅ Trigger live train markers **only after routes finish loading**
+//   useEffect(() => {
+//     if (routesLoaded) {
+//       console.log("🚦 All routes loaded. Triggering onRoutesLoaded()");
+//       onRoutesLoaded();
+//     }
+//   }, [routesLoaded, onRoutesLoaded]);
+
+  // ✅ Toggle visibility dynamically **without refetching**
   useEffect(() => {
     if (!map) return;
 

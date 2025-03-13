@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { act, useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import ResetButton from "./ResetButton";
@@ -76,7 +76,7 @@ const Map = () => {
         <>
           <TrainPaths map={mapInstance.current} activeFilters={activeFilters} onRoutesLoaded={() => setIsRoutesLoaded(true)}/>
           {/* <VehicleMarkers map={mapInstance.current} /> ✅ Overlay Vehicle Tracking */}
-          { isRoutesLoaded && < LiveTrainMarkers map={mapInstance.current}/> }
+          { isRoutesLoaded && < LiveTrainMarkers map={mapInstance.current} activeFilters={activeFilters}/> }
         </>
       )}
       <TransitFilters 
