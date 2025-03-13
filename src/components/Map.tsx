@@ -10,6 +10,10 @@ import LiveTrainMarkers from "./LiveTrainMarkers";
 import ZoomControls from "./ZoomControls";
 
 const DEFAULT_CENTER: [number, number] = [-71.0589, 42.3601];
+const MASSACHUSETTS_BOUNDS: [[number, number], [number, number]] = [
+    [-73.5081, 41.237964], // Southwest corner (Lower Left)
+    [-69.9285, 42.8868],   // Northeast corner (Upper Right)
+  ];
 
 const MBTA_LINES = {
   subway: ["Red", "Orange", "Blue"],
@@ -42,9 +46,10 @@ const Map = () => {
       container: mapContainer.current,
       style: "https://api.maptiler.com/maps/6352c4b7-9417-48fc-b37e-a8e9154e1559/style.json?key=uAsV5el3HdBMKRqcz1p8",
       center: DEFAULT_CENTER,
-      zoom: 12,
+      zoom: 11,
     });
 
+    mapInstance.current.setMaxBounds(MASSACHUSETTS_BOUNDS);
     mapInstance.current.on("load", () => setMapReady(true));
 
   }, []);
