@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import maplibregl from 'maplibre-gl';
+import { useEffect, useRef, useState } from "react";
+import maplibregl from "maplibre-gl";
 
-const MBTA_API_BASE_URL = 'https://api-v3.mbta.com';
+const MBTA_API_BASE_URL = "https://api-v3.mbta.com";
 const REFRESH_INTERVAL = 2500; // 2.5 seconds
-const MBTA_TRAIN_ICON_URL = 'https://www.mbta.com/icon-svg/icon-vehicle-bordered-expanded.svg';
+const MBTA_TRAIN_ICON_URL = "https://www.mbta.com/icon-svg/icon-vehicle-bordered-expanded.svg";
 
 interface LiveTrainMarkersProps {
   map: maplibregl.Map | null;
@@ -17,17 +17,17 @@ interface TrainAttributes {
   longitude: number;
   label: string;
   bearing: number;
+  // occupancy_status?: string;
+  carriages?: { label: string }[]; 
+  updated_at: string;
 }
 
 interface TrainData {
   id: string;
   attributes: TrainAttributes;
   relationships: {
-    route: {
-      data: {
-        id: string;
-      };
-    };
+    route: { data: { id: string } };
+    // stop?: { data?: { id: string } };
   };
 }
 
@@ -36,7 +36,17 @@ interface TrainAPIResponse {
 }
 
 export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarkersProps) {
-  const trainMarkers = useRef(new Map<string, { marker: maplibregl.Marker; route: string; visible: boolean }>());
+  const trainMarkers = useRef(
+    new Map<
+      string,
+      {
+        marker: maplibregl.Marker;
+        route: string;
+        visible: boolean;
+        tooltip: HTMLDivElement;
+      }
+    >()
+  );
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchedData = useRef<string | null>(null);
 
@@ -50,7 +60,7 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
 
       try {
         const response = await fetch(
-          `${MBTA_API_BASE_URL}/vehicles?filter[route]=Red,Blue,Orange,Green-B,Green-C,Green-D,Green-E,CR-Fairmount,CR-Fitchburg,CR-Worcester,CR-Franklin,CR-Greenbush,CR-Haverhill,CR-Kingston,CR-Lowell,CR-Middleborough,CR-Needham,CR-Newburyport,CR-Providence,CR-Foxboro`
+          `${MBTA_API_BASE_URL}/vehicles?filter[route]=Red,Blue,Orange,Mattapan,Green-B,Green-C,Green-D,Green-E,CR-Fairmount,CR-Fitchburg,CR-Worcester,CR-Franklin,CR-Greenbush,CR-Haverhill,CR-Kingston,CR-Lowell,CR-Middleborough,CR-Needham,CR-Newburyport,CR-Providence,CR-Foxboro`
         );
 
         if (response.status === 429) {
@@ -61,7 +71,6 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
         const trainData: TrainAPIResponse = await response.json();
         const dataString = JSON.stringify(trainData.data);
 
-        // 🛑 Skip processing if data hasn't changed
         if (lastFetchedData.current === dataString) {
           console.log("🔄 No change in train data. Skipping update.");
           return;
@@ -73,35 +82,75 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
         trainData.data.forEach((train) => {
           const trainId = train.id;
           const routeId = train.relationships.route.data.id;
-          const { latitude, longitude, label, bearing } = train.attributes;
+          // const { latitude, longitude, bearing, carriages, updated_at } = train.attributes;
+          const { latitude, longitude, label, bearing, carriages, updated_at } = train.attributes;
+          // const destination = train.relationships.stop?.data?.id || "Unknown Destination";
 
           if (!latitude || !longitude) return;
 
-          // ✅ If marker exists, update its position (DO NOT reset visibility)
+          // ✅ Calculate the age of last location ping
+          const lastPingAge = Math.round((Date.now() - new Date(updated_at).getTime()) / 1000);
+
+          // ✅ Extract Train Consist Data
+          const carCount = carriages ? carriages.length : "N/A";
+          const consist = carriages ? carriages.map(c => c.label).join(", ") : "No data";
+
+          const trainDetails = routeId.includes("CR-")?`Car: ${label}
+            Route: ${routeId}
+            Last Ping: ${lastPingAge}s ago
+          `:`Lead Car: ${label}
+            Route: ${routeId}
+            Cars: ${carCount}
+            Consist: ${consist}
+            Last Ping: ${lastPingAge}s ago
+          `;
+
           if (trainMarkers.current.has(trainId)) {
             const existingMarker = trainMarkers.current.get(trainId)!;
             existingMarker.marker.setLngLat([longitude, latitude]).setRotation(bearing);
           } else {
-            // 🔹 Define custom marker ONCE before fetching API
-            const customMarkerElement = document.createElement('div');
+            const customMarkerElement = document.createElement("div");
             customMarkerElement.style.backgroundImage = `url(${MBTA_TRAIN_ICON_URL})`;
-            customMarkerElement.style.backgroundSize = 'contain';
-            customMarkerElement.style.width = '16px';
-            customMarkerElement.style.height = '16px';
-            customMarkerElement.style.cursor = 'pointer';
+            customMarkerElement.style.backgroundSize = "contain";
+            customMarkerElement.style.width = "16px";
+            customMarkerElement.style.height = "16px";
+            customMarkerElement.style.cursor = "pointer";
 
-            // ✅ Add custom marker to map
+            const tooltip = document.createElement("div");
+            tooltip.className = "train-tooltip";
+            tooltip.style.position = "absolute";
+            tooltip.style.background = "rgba(0, 0, 0, 0.75)";
+            tooltip.style.color = "white";
+            tooltip.style.padding = "4px 8px";
+            tooltip.style.borderRadius = "4px";
+            tooltip.style.fontSize = "12px";
+            tooltip.style.whiteSpace = "nowrap";
+            tooltip.style.visibility = "hidden";
+            tooltip.innerText = trainDetails;
+
+            customMarkerElement.addEventListener("mouseenter", () => {
+              tooltip.style.visibility = "visible";
+            });
+
+            customMarkerElement.addEventListener("mouseleave", () => {
+              tooltip.style.visibility = "hidden";
+            });
+
             const marker = new maplibregl.Marker({ element: customMarkerElement })
               .setLngLat([longitude, latitude])
-              .setPopup(new maplibregl.Popup().setHTML(`<b>Train ${label}</b>`))
               .setRotation(bearing)
               .addTo(map);
 
-            // ✅ Store marker along with its route and visibility state
-            trainMarkers.current.set(trainId, { marker, route: routeId, visible: activeFilters[routeId] ?? true });
+            map.getCanvas().parentElement?.appendChild(tooltip);
+
+            marker.getElement().addEventListener("mousemove", (event) => {
+              tooltip.style.left = `${event.clientX + 10}px`; 
+              tooltip.style.top = `${event.clientY - 30}px`;
+            });
+
+            trainMarkers.current.set(trainId, { marker, route: routeId, visible: activeFilters[routeId] ?? true, tooltip });
           }
         });
-
       } catch (err) {
         console.error(`❌ Error fetching live train locations:`, err);
       }
@@ -118,30 +167,26 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      trainMarkers.current.forEach(({ tooltip }) => {
+        tooltip.remove();
+      });
     };
-  }, [map]); // ✅ Do not include `activeFilters` to prevent re-fetching
+  }, [map]);
 
-  // ✅ Effect for toggling visibility (DOES NOT trigger API calls)
   useEffect(() => {
     if (!map) return;
 
-    trainMarkers.current.forEach(({ marker, route }, trainId) => {
+    trainMarkers.current.forEach(({ marker, route, visible, tooltip }, trainId) => {
       const isRouteVisible = activeFilters[route] ?? true;
-      const wasPreviouslyHidden = trainMarkers.current.get(trainId)?.visible === false;
+      const shouldBeVisible = isRouteVisible && (trainMarkers.current.get(trainId)?.visible ?? true);
 
-      // ✅ If toggled ON, show the marker again
-      if (isRouteVisible && wasPreviouslyHidden) {
-        marker.getElement().style.display = "block";
-        trainMarkers.current.set(trainId, { marker, route, visible: true });
-      } 
-      // ✅ If toggled OFF, keep it hidden
-      else if (!isRouteVisible) {
-        marker.getElement().style.display = "none";
-        trainMarkers.current.set(trainId, { marker, route, visible: false });
-      }
+      marker.getElement().style.display = shouldBeVisible ? "block" : "none";
+      tooltip.style.display = shouldBeVisible ? "block" : "none";
+
+      trainMarkers.current.set(trainId, { marker, route, visible: shouldBeVisible, tooltip });
     });
 
-  }, [activeFilters]); // ✅ Only affects visibility, no API call
+  }, [activeFilters]);
 
   return null;
 }
