@@ -176,14 +176,20 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
   useEffect(() => {
     if (!map) return;
 
-    trainMarkers.current.forEach(({ marker, route, tooltip }, trainId) => {
+    trainMarkers.current.forEach(({ marker, route, visible, tooltip }, trainId) => {
       const isRouteVisible = activeFilters[route] ?? true;
-      const shouldBeVisible = isRouteVisible && (trainMarkers.current.get(trainId)?.visible ?? true);
+      const wasPreviouslyHidden = trainMarkers.current.get(trainId)?.visible === false;
 
-      marker.getElement().style.display = shouldBeVisible ? "block" : "none";
-      tooltip.style.display = shouldBeVisible ? "block" : "none";
+      if (isRouteVisible && wasPreviouslyHidden) {
+        // Show the marker again
+        marker.getElement().style.display = "block";
+        trainMarkers.current.set(trainId, { marker, route, visible: true, tooltip });
+      } else if (!isRouteVisible) {
+        // Hide the marker
+        marker.getElement().style.display = "none";
+        trainMarkers.current.set(trainId, { marker, route, visible: false, tooltip });
+}
 
-      trainMarkers.current.set(trainId, { marker, route, visible: shouldBeVisible, tooltip });
     });
 
   }, [activeFilters]);
