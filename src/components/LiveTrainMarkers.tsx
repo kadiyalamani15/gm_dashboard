@@ -176,7 +176,7 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
   useEffect(() => {
     if (!map) return;
 
-    trainMarkers.current.forEach(({ marker, route, visible, tooltip }, trainId) => {
+    trainMarkers.current.forEach(({ marker, route, tooltip }, trainId) => {
       const isRouteVisible = activeFilters[route] ?? true;
       const wasPreviouslyHidden = trainMarkers.current.get(trainId)?.visible === false;
 
