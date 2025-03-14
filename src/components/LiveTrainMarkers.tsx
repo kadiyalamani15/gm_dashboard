@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 
 const MBTA_API_BASE_URL = "https://api-v3.mbta.com";
@@ -176,7 +176,7 @@ export default function LiveTrainMarkers({ map, activeFilters }: LiveTrainMarker
   useEffect(() => {
     if (!map) return;
 
-    trainMarkers.current.forEach(({ marker, route, visible, tooltip }, trainId) => {
+    trainMarkers.current.forEach(({ marker, route, tooltip }, trainId) => {
       const isRouteVisible = activeFilters[route] ?? true;
       const shouldBeVisible = isRouteVisible && (trainMarkers.current.get(trainId)?.visible ?? true);
 
