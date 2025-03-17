@@ -39,7 +39,7 @@ export default function ZoomControls({ map }: ZoomControlsProps) {
 
   return (
     <div
-      className="absolute top-70 right-4 z-10 flex flex-col items-center gap-2 p-3 bg-black text-white rounded-lg shadow-md"
+      className="absolute top-72 right-4 z-10 flex flex-col items-center gap-2 p-3 bg-black text-white rounded-lg shadow-md"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
